@@ -9,6 +9,12 @@ namespace CVRP_APA
 {
     class Program
     {
+        static void Main(string[] args)
+        {
+            Instance firstEntry = CreateDistanceTable("P-n16-k8.txt");
+            GreedyStep(firstEntry);
+        }
+
         static Instance CreateDistanceTable(string fileName)
         {
             Instance obj;
@@ -28,7 +34,7 @@ namespace CVRP_APA
                 string capacity = readFile.ReadLine();
                 capacity = SetInstance(capacity);
                 //Set the previous values on the object values
-                obj = new Instance(name, int.Parse(dimension), 
+                obj = new Instance(name, int.Parse(dimension),
                                 int.Parse(vehicles), int.Parse(capacity));
                 //Gets the matrix of distances between each city
                 readFile.ReadLine();
@@ -37,7 +43,7 @@ namespace CVRP_APA
                     string line = readFile.ReadLine();
                     string[] splitLine = line.Split(new string[] { " " }, StringSplitOptions.RemoveEmptyEntries);
 
-                    for(int j = 0; j < splitLine.Length; j++)
+                    for (int j = 0; j < splitLine.Length; j++)
                     {
                         obj.costMatrix[i, j] = int.Parse(splitLine[j]);
                     }
@@ -56,26 +62,77 @@ namespace CVRP_APA
             return cleanLine;
         }
 
+        static MinHeap[] CreateHeaps(Instance entry)
+        {
+            MinHeap[] heaps = new MinHeap[entry.dimension];
+
+            for (int i = 0; i < entry.dimension; i++)
+            {
+                int[] elements = new int[entry.dimension];
+                
+                for (int j = 0; j < entry.dimension; j++)
+                {
+                    elements[j] = entry.costMatrix[i, j];
+                }
+                heaps[i] = new MinHeap(entry.dimension);
+                heaps[i].Add(elements);
+            }
+
+            return heaps;
+        }
+
         static void GreedyStep(Instance entry)
         {
-            for(int i = 0; i < entry.dimension; i++)
+            //Criação de heaps de distancia em relação a cada cidade
+            MinHeap[] heaps = CreateHeaps(entry);
+
+            for (int i = 0; i < entry.dimension; i++)
             {
                 //We are only allowed to have the number of routes less or equal to the number of vehicles
                 string[] routes = new string[entry.vehicles];
                 bool[] visited = new bool[entry.dimension];
-
-                for(int j = 0; j < routes.Length; j++)
+                
+                for (int j = 0; j < routes.Length; j++)
                 {
                     int capacitySum = 0;
-
+                    int currentCity = i;
+                    visited[currentCity] = true;
+                    routes[j] = "{" + i;
+                    try
+                    {
+                        while ((capacitySum + heaps[currentCity].Peek()) < entry.capacity)
+                        {
+                            HeapPair city = heaps[currentCity].Pop();
+                            if (city.distance != 0 && visited[city.cityNum] == false)
+                            {
+                                routes[j] += ", " + city.cityNum;
+                                capacitySum += city.distance;
+                                visited[city.cityNum] = true;
+                                currentCity = city.cityNum;
+                            }
+                        }
+                    }
+                    catch (IndexOutOfRangeException e)
+                    {
+                        Console.WriteLine("Todas as cidades já foram visitadas");
+                        continue;
+                    }
+                    routes[j] += ", " + i + "}";
+                    Console.WriteLine(routes[j]);
                 }
-
+                for (int k = 0; k < entry.dimension; k++)
+                {   
+                    if (visited[k] == false)
+                    {
+                        Console.WriteLine("Não visitou a cidade: " + k);
+                    }
+                    else
+                    {
+                        heaps[k].ResetHeap();
+                    }
+                }
             }
-        }
 
-        static void Main(string[] args)
-        { 
-           Instance firstEntry = CreateDistanceTable("P-n16-k8.txt");
         }
 
     }
@@ -112,7 +169,7 @@ namespace CVRP_APA
 
     public class MinHeap
     {
-        private readonly HeapPair[] _elements;
+        private HeapPair[] _elements;
         private int _size;
 
         public MinHeap(int size)
@@ -159,9 +216,10 @@ namespace CVRP_APA
 
             var result = _elements[0];
             _elements[0] = _elements[_size - 1];
+            _elements[_size - 1] = result;
             _size--;
 
-            ReCalculateDown();
+            ReCalculateDown(0);
 
             return result;
         }
@@ -173,26 +231,24 @@ namespace CVRP_APA
 
             for(int i = 0; i < element.Length; i++)
             {
-
                 _elements[_size] = new HeapPair(element[i], i);
                 _size++;
             }
 
-            ReCalculateUp();
+            HeapSort();
         }
 
-        private void ReCalculateDown()
+        private void ReCalculateDown(int index)
         {
-            int index = 0;
             while (HasLeftChild(index))
             {
                 var smallerIndex = GetLeftChildIndex(index);
-                if (HasRightChild(index) && GetRightChild(index) < GetLeftChild(index))
+                if (HasRightChild(index) && GetRightChild(index).distance < GetLeftChild(index).distance)
                 {
                     smallerIndex = GetRightChildIndex(index);
                 }
 
-                if (_elements[smallerIndex] >= _elements[index])
+                if (_elements[smallerIndex].distance >= _elements[index].distance)
                 {
                     break;
                 }
@@ -202,15 +258,43 @@ namespace CVRP_APA
             }
         }
 
-        private void ReCalculateUp()
+        public void ResetHeap()
         {
-            var index = _size - 1;
-            while (!IsRoot(index) && _elements[index] < GetParent(index))
+            _size = _elements.Length;
+            HeapSort();
+        }
+
+        private void HeapSort()
+        {
+            //pegando o piso da metade do tamanho do vetor, eu sei quem é o ultimo pai
+            for(int index = (_size / 2) - 1; index >= 0; index--)
             {
-                var parentIndex = GetParentIndex(index);
-                Swap(parentIndex, index);
-                index = parentIndex;
+                var smallerIndex = GetLeftChildIndex(index);
+                
+                if (HasRightChild(index) && GetRightChild(index).distance < GetLeftChild(index).distance)
+                {
+                    smallerIndex = GetRightChildIndex(index);
+                }
+
+                if (_elements[smallerIndex].distance < _elements[index].distance)
+                {
+                    Swap(smallerIndex, index);
+                    ReCalculateDown(smallerIndex);
+                }
             }
+
+            /*Console.Write("[");
+            for (int i = 0; i < _size; i++)
+            {
+                Console.Write(_elements[i].cityNum + ", ");
+            }
+            Console.Write("]");
+            Console.WriteLine();*/
+        }
+
+        public int DisplaySize()
+        {
+            return _size;
         }
     }
 }
