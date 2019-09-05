@@ -5,3 +5,10 @@ C:\Users\rebec\source\repos\CVRP_APA\CVRP_APA\obj\Debug\CVRP_APA.csprojAssemblyR
 C:\Users\rebec\source\repos\CVRP_APA\CVRP_APA\obj\Debug\CVRP_APA.csproj.CoreCompileInputs.cache
 C:\Users\rebec\source\repos\CVRP_APA\CVRP_APA\obj\Debug\CVRP_APA.exe
 C:\Users\rebec\source\repos\CVRP_APA\CVRP_APA\obj\Debug\CVRP_APA.pdb
+C:\Users\mathe\Desktop\CC\APA\CVRP_APA\CVRP_APA\obj\Debug\CVRP_APA.exe
+C:\Users\mathe\Desktop\CC\APA\CVRP_APA\CVRP_APA\obj\Debug\CVRP_APA.pdb
+C:\Users\mathe\Desktop\CC\APA\CVRP_APA\CVRP_APA\obj\Debug\CVRP_APA.csprojAssemblyReference.cache
+C:\Users\mathe\Desktop\CC\APA\CVRP_APA\CVRP_APA\obj\Debug\CVRP_APA.csproj.CoreCompileInputs.cache
+C:\Users\mathe\Desktop\CC\APA\CVRP_APA\CVRP_APA\bin\Debug\CVRP_APA.exe.config
+C:\Users\mathe\Desktop\CC\APA\CVRP_APA\CVRP_APA\bin\Debug\CVRP_APA.exe
+C:\Users\mathe\Desktop\CC\APA\CVRP_APA\CVRP_APA\bin\Debug\CVRP_APA.pdb
