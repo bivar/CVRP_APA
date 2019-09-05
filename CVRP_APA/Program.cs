@@ -11,10 +11,10 @@ namespace CVRP_APA
     {
         static void Main(string[] args)
         {
-            Instance firstEntry = CreateEntryFile("P-n23-k8.txt");
-            GreedyStep(firstEntry);
+            Instance firstEntry = CreateEntryFile("P-n55-k7.txt");
+            GreedyStep(firstEntry, true);
             FirstNeighbour(firstEntry);
-            SecondNeighbour(firstEntry);
+            //SecondNeighbour(firstEntry);
         }
 
         static Instance CreateEntryFile(string fileName)
@@ -78,86 +78,172 @@ namespace CVRP_APA
             return cleanLine;
         }
 
-        static MinHeap CreateHeaps(Instance entry)
+        static MinHeap CreateMinHeaps(Instance entry)
         {
-            MinHeap heaps = new MinHeap(entry.dimension);
-            int[] elements = new int[entry.dimension];
+            MinHeap heaps = new MinHeap(entry.dimension-1);
+            int[] elements = new int[entry.dimension-1];
 
-            for (int i = 0; i < entry.dimension; i++)
+            for (int i = 1; i < entry.dimension; i++)
             {
-                elements[i] = entry.demand[i];
+                elements[i-1] = entry.demand[i];
             }
 
             heaps.Add(elements);
             return heaps;
         }
 
-        static void GreedyStep(Instance entry)
+        static MaxHeap CreateMaxHeaps(Instance entry)
         {
-            //Criação de heaps de distancia em relação a cada cidade
-            MinHeap heaps = CreateHeaps(entry);
+            MaxHeap heaps = new MaxHeap(entry.dimension-1);
+            int[] elements = new int[entry.dimension-1];
 
+            for (int i = 1; i < entry.dimension; i++)
+            {
+                elements[i-1] = entry.demand[i];
+            }
+
+            heaps.Add(elements);
+            return heaps;
+        }
+        
+        static void GreedyStep(Instance entry, bool isMin)
+        {
             //Distancia total percorrido por todas as rotas
             int totalRoutes = 0;
             int[] routesDistance = new int[entry.vehicles];
             int[] capacitySum = new int[entry.vehicles];
+            int[] currentCity = new int[entry.vehicles];
 
             //We are only allowed to have the number of routes less or equal to the number of vehicles
             List<int>[] routes = new List<int>[entry.vehicles];
             bool[] visited = new bool[entry.dimension];
 
+            MinHeap minheaps = null;
+            MaxHeap maxheaps = null;
+
+            if (isMin)
+            {
+                //Criação do heaps minimo da capcidade em relação a cada cidade
+                minheaps = CreateMinHeaps(entry);
+            }
+            else
+            {
+                Console.WriteLine("\n COMEÇOU O MAXIMO \n");
+                //Criação do heaps maximo da capcidade em relação a cada cidade
+                maxheaps = CreateMaxHeaps(entry);
+            }
+            
+            visited[0] = true;
+            for (int i = 0; i < routes.Length; i++)
+            {
+                routes[i] = new List<int>();
+                routes[i].Add(0);
+            }
+
+            bool allRoutesFull = false;
+            while (!allRoutesFull)
+            {
+                for (int i = 0; i < routes.Length; i++)
+                {
+                    try
+                    {
+                        HeapPair city = null;
+                        if (isMin)
+                        {
+                            if((capacitySum[i] + minheaps.Peek()) <= entry.capacity)
+                            {
+                                city= minheaps.Pop();
+                            }
+                            else
+                            {
+                                if (i == routes.Length - 1)
+                                {
+                                    allRoutesFull = true;
+                                    break;
+                                }
+                                else
+                                {
+                                    continue;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            if ((capacitySum[i] + maxheaps.Peek()) <= entry.capacity)
+                            {
+                                city = maxheaps.Pop();
+                            }
+                            else
+                            {
+                                if (i == routes.Length - 1)
+                                {
+                                    allRoutesFull = true;
+                                    break;
+                                }
+                                else
+                                {
+                                    continue;
+                                }
+                            }
+                        }
+                        Console.WriteLine("Cidade: " + city.cityNum);
+                        Console.WriteLine("Demanda: " + city.demand);
+                        routes[i].Add(city.cityNum);
+                        capacitySum[i] += city.demand;
+                        visited[city.cityNum] = true;
+                        routesDistance[i] += entry.costMatrix[currentCity[i], city.cityNum];
+                        totalRoutes += entry.costMatrix[currentCity[i], city.cityNum];
+                        currentCity[i] = city.cityNum;
+                        break;
+                    }
+                    catch (IndexOutOfRangeException)
+                    {
+                        Console.WriteLine("Todas as cidades já foram visitadas");
+                        Console.WriteLine("i: " + i);
+                        allRoutesFull = true;
+                        break;
+                    }
+                }
+            }
 
             for (int i = 0; i < routes.Length; i++)
             {
-                capacitySum[i] = 0;
-                int currentCity = 0;
-                visited[0] = true;
-                routes[i] = new List<int>();
-                routes[i].Add(0);
-
-                try
-                {
-                    while ((capacitySum[i] + heaps.Peek()) <= entry.capacity)
-                    {
-                        HeapPair city = heaps.Pop();
-                        if (city.demand != 0)
-                        {
-                            routes[i].Add(city.cityNum);
-                            capacitySum[i] += city.demand;
-                            visited[city.cityNum] = true;
-                            routesDistance[i] += entry.costMatrix[currentCity, city.cityNum];
-                            totalRoutes += entry.costMatrix[currentCity, city.cityNum];
-                            currentCity = city.cityNum;
-                        }
-                    }
-                }
-                catch (IndexOutOfRangeException)
-                {
-                    Console.WriteLine("Todas as cidades já foram visitadas");
-                }
                 routes[i].Add(0);
                 Console.Write("{");
                 foreach (int a in routes[i])
                 {
                     Console.Write(a + ", ");
+
                 }
+                Console.Write("}");
                 Console.WriteLine();
                 Console.WriteLine("Distancia dessa rota: " + routesDistance[i]);
                 Console.WriteLine("Capacidade dessa rota: " + capacitySum[i]);
             }
 
+            bool allCitiesVisited = true;
             for (int k = 0; k < entry.dimension; k++)
             {   
                 if (visited[k] == false)
                 {
+                    allCitiesVisited = false;
                     Console.WriteLine("Não visitou a cidade: " + k);
                 }
             }
             Console.WriteLine("Distancia total: " + totalRoutes);
 
-            entry.routes = routes;
-            entry.routesDistance = routesDistance;
-            entry.routesCapacity = capacitySum;
+            if(allCitiesVisited)
+            {
+                entry.routes = routes;
+                entry.routesDistance = routesDistance;
+                entry.routesCapacity = capacitySum;
+            }
+            else
+            {
+                if (isMin)
+                    GreedyStep(entry, false);
+            }
+            
         }
 
         static void FirstNeighbour(Instance entry)
@@ -443,7 +529,7 @@ namespace CVRP_APA
 
         public HeapPair(int cityNum, int demand)
         {
-            this.cityNum = cityNum;
+            this.cityNum = cityNum+1;
             this.demand = demand;
         }
     }
@@ -555,6 +641,120 @@ namespace CVRP_APA
                 {
                     Swap(smallerIndex, index);
                     ReCalculateDown(smallerIndex);
+                }
+            }
+        }
+
+        
+    }
+
+    public class MaxHeap
+    {
+        private HeapPair[] _elements;
+        private int _size;
+
+        public MaxHeap(int size)
+        {
+            _elements = new HeapPair[size];
+        }
+
+        private int GetLeftChildIndex(int elementIndex) => 2 * elementIndex + 1;
+        private int GetRightChildIndex(int elementIndex) => 2 * elementIndex + 2;
+        private int GetParentIndex(int elementIndex) => (elementIndex - 1) / 2;
+
+        private bool HasLeftChild(int elementIndex) => GetLeftChildIndex(elementIndex) < _size;
+        private bool HasRightChild(int elementIndex) => GetRightChildIndex(elementIndex) < _size;
+        private bool IsRoot(int elementIndex) => elementIndex == 0;
+
+        private HeapPair GetLeftChild(int elementIndex) => _elements[GetLeftChildIndex(elementIndex)];
+        private HeapPair GetRightChild(int elementIndex) => _elements[GetRightChildIndex(elementIndex)];
+        private HeapPair GetParent(int elementIndex) => _elements[GetParentIndex(elementIndex)];
+
+        private void Swap(int firstIndex, int secondIndex)
+        {
+            var temp = _elements[firstIndex];
+            _elements[firstIndex] = _elements[secondIndex];
+            _elements[secondIndex] = temp;
+        }
+
+        public bool IsEmpty()
+        {
+            return _size == 0;
+        }
+
+        public int Peek()
+        {
+            if (_size == 0)
+                throw new IndexOutOfRangeException();
+
+            return _elements[0].demand;
+        }
+
+        public HeapPair Pop()
+        {
+            if (_size == 0)
+                throw new IndexOutOfRangeException();
+
+            var result = _elements[0];
+            _elements[0] = _elements[_size - 1];
+            _elements[_size - 1] = result;
+            _size--;
+
+            ReCalculateDown(0);
+
+            return result;
+        }
+
+        public void Add(int[] element)
+        {
+            if (_size == _elements.Length)
+                throw new IndexOutOfRangeException();
+
+            for (int i = 0; i < element.Length; i++)
+            {
+                _elements[_size] = new HeapPair(i, element[i]);
+                _size++;
+            }
+
+            HeapSort();
+        }
+
+        private void ReCalculateDown(int index)
+        {
+            while (HasLeftChild(index))
+            {
+                var biggerIndex = GetLeftChildIndex(index);
+                if (HasRightChild(index) && GetRightChild(index).demand > GetLeftChild(index).demand)
+                {
+                    biggerIndex = GetRightChildIndex(index);
+                }
+
+                if (_elements[biggerIndex].demand < _elements[index].demand)
+                {
+                    break;
+                }
+
+                Swap(biggerIndex, index);
+                index = biggerIndex;
+            }
+        }
+
+        private void HeapSort()
+        {
+            //pegando o piso da metade do tamanho do vetor, eu sei quem é o ultimo pai
+            for (int index = (_size / 2) - 1; index >= 0; index--)
+            {
+                var biggerIndex = GetLeftChildIndex(index);
+
+                if (HasRightChild(index) && GetRightChild(index).demand > GetLeftChild(index).demand)
+                {
+                    biggerIndex = GetRightChildIndex(index);
+                }
+
+                if (_elements[biggerIndex].demand > _elements[index].demand)
+                {
+                    Swap(biggerIndex, index);
+                    ReCalculateDown(biggerIndex);
                 }
             }
         }
