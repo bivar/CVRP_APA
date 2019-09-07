@@ -11,10 +11,22 @@ namespace CVRP_APA
     {
         static void Main(string[] args)
         {
-            Instance firstEntry = CreateEntryFile("P-n55-k7.txt");
-            GreedyStep(firstEntry, true);
-            FirstNeighbour(firstEntry);
-            //SecondNeighbour(firstEntry);
+            Instance[] allEntries = new Instance[7];
+            allEntries[0] = CreateEntryFile("P-n19-k2.txt");
+            allEntries[1] = CreateEntryFile("P-n20-k2.txt");
+            allEntries[2] = CreateEntryFile("P-n23-k8.txt");
+            allEntries[3] = CreateEntryFile("P-n45-k5.txt");
+            allEntries[4] = CreateEntryFile("P-n50-k10.txt");
+            allEntries[5] = CreateEntryFile("P-n51-k10.txt");
+            allEntries[6] = CreateEntryFile("P-n55-k7.txt");
+            
+            foreach(Instance entry in allEntries)
+            {
+                Console.WriteLine("\n*********************COMEÇO DO ARQUIVO: " + entry.nameFile+"*********************\n");
+                GreedyStep(entry, true);
+                VND(entry);
+            }
+            
         }
 
         static Instance CreateEntryFile(string fileName)
@@ -108,8 +120,6 @@ namespace CVRP_APA
         
         static void GreedyStep(Instance entry, bool isMin)
         {
-            //Distancia total percorrido por todas as rotas
-            int totalRoutes = 0;
             int[] routesDistance = new int[entry.vehicles];
             int[] capacitySum = new int[entry.vehicles];
             int[] currentCity = new int[entry.vehicles];
@@ -192,7 +202,6 @@ namespace CVRP_APA
                         capacitySum[i] += city.demand;
                         visited[city.cityNum] = true;
                         routesDistance[i] += entry.costMatrix[currentCity[i], city.cityNum];
-                        totalRoutes += entry.costMatrix[currentCity[i], city.cityNum];
                         currentCity[i] = city.cityNum;
                         break;
                     }
@@ -206,9 +215,12 @@ namespace CVRP_APA
                 }
             }
 
+            int totalDistance = 0;
+
             for (int i = 0; i < routes.Length; i++)
             {
                 routes[i].Add(0);
+                routesDistance[i] += entry.costMatrix[routes[i][routes[i].Count - 2], 0];
                 Console.Write("{");
                 foreach (int a in routes[i])
                 {
@@ -219,6 +231,7 @@ namespace CVRP_APA
                 Console.WriteLine();
                 Console.WriteLine("Distancia dessa rota: " + routesDistance[i]);
                 Console.WriteLine("Capacidade dessa rota: " + capacitySum[i]);
+                totalDistance += routesDistance[i];
             }
 
             bool allCitiesVisited = true;
@@ -230,10 +243,10 @@ namespace CVRP_APA
                     Console.WriteLine("Não visitou a cidade: " + k);
                 }
             }
-            Console.WriteLine("Distancia total: " + totalRoutes);
-
+                        
             if(allCitiesVisited)
             {
+                Console.WriteLine("Distancia total da rota: " + totalDistance);
                 entry.routes = routes;
                 entry.routesDistance = routesDistance;
                 entry.routesCapacity = capacitySum;
@@ -246,9 +259,11 @@ namespace CVRP_APA
             
         }
 
-        static void FirstNeighbour(Instance entry)
+        static Instance FirstNeighbour(Instance entry)
         {
             int total = 0;
+            bool improvement = false;
+
             for(int i = 0; i < entry.routes.Length; i++)
             {
                 //pegando as rotas e as distancias iniciais de cada uma
@@ -258,7 +273,7 @@ namespace CVRP_APA
                 List<int> finalRoute = null;
                 int finalD = int.MaxValue;
                 //loop para todas as cidades dentro de cada rota, excluindo a primeira e a ultima
-                for (int j = 1; j < (initialRoute.Count - 2); j++)
+                for (int j = 1; j < (initialRoute.Count - 1); j++)
                 {
                     List<int> auxRoute = CloneList(initialRoute);
                     int cityR = auxRoute[j];
@@ -300,6 +315,7 @@ namespace CVRP_APA
 
                 if(finalD < initialD)
                 {
+                    improvement = true;
                     Console.WriteLine("PRIMEIRO VIZINHO:");
                     entry.routes[i] = finalRoute;
                     Console.Write("{");
@@ -314,11 +330,19 @@ namespace CVRP_APA
 
                 total += entry.routesDistance[i];
             }
-
-            Console.WriteLine("Distancia total :" + total);
+            
+            if (improvement)
+            {
+                Console.WriteLine("Distancia total :" + total);
+                return entry;
+            }
+            else
+            {
+                return null;
+            }
         }
 
-        static void SecondNeighbour(Instance entry)
+        static Instance SecondNeighbour(Instance entry)
         {
             List<int> finalCurrentRoute = null;
             int finalCurrentD = int.MaxValue;
@@ -330,7 +354,7 @@ namespace CVRP_APA
             int finalOtherC = 0;
             int finalOtherIndex = 0;
 
-            int finalCredit = int.MaxValue;
+            int finalCredit = int.MinValue;
             for (int i = 0; i < entry.routes.Length; i++)
             {
                 //pegando as rotas e as distancias iniciais de cada uma
@@ -346,7 +370,7 @@ namespace CVRP_APA
                 int semiFinalOtherC = 0;
                 int semiFinalOtherIndex = 0;
 
-                int semiFinalCredit = int.MaxValue;
+                int semiFinalCredit = int.MinValue;
                 int currentIndexPosition = -1;
                 //loop para todas as cidades dentro de cada rota, excluindo a primeira e a ultima
                 for (int j = 1; j < (auxRoute.Count - 1); j++)
@@ -355,7 +379,7 @@ namespace CVRP_APA
 
                     //Excluir a distancia da cidade escolhida com a sua antecessora e sucessora, além disso somar a distancia entre a antecessora e a sucessora para pegar seu credito
                     int auxD = initialD - entry.costMatrix[auxRoute[j - 1], cityR] - entry.costMatrix[cityR, auxRoute[j + 1]] + entry.costMatrix[auxRoute[j - 1], auxRoute[j + 1]];
-                    int currentCredit = auxD - initialD;
+                    int currentCredit = initialD - auxD;
 
                     //ISSO AQUI SALVA DENTRE TODAS AS OUTRAS ROTAS POSSIVEIS
                     List<int> quarterFinalOtherRoute = null;
@@ -363,7 +387,7 @@ namespace CVRP_APA
                     int quarterFinalOtherC = 0;
                     int quarterFinalOtherIndex = 0;
 
-                    int quarterFinalCredit = int.MaxValue;
+                    int quarterFinalCredit = int.MinValue;
                     //Loop para todas as outras rotas diferentes da que foi escolhida
                     for (int k = 0; k < entry.routes.Length; k++)
                     {
@@ -377,7 +401,7 @@ namespace CVRP_APA
 
                                 //Variavel para salvar a melhor distancia depois colocar a nova cidade
                                 int octavesFinalOtherD = int.MaxValue;
-                                int octavesFinalCredit = int.MaxValue;
+                                int octavesFinalCredit = int.MinValue;
 
                                 //Variaveis pra saber qual posição da outra rota colocar a cidade removida
                                 int otherIndexPosition = -1;
@@ -390,7 +414,7 @@ namespace CVRP_APA
                                     int totalCredit = otherCredit + currentCredit;
 
                                     //comparação de credito pra saber se vale a pena trocar, depois checa se a nova distancia seria melhor do que a salva anteriormente
-                                    if ((totalCredit > 0) && (totalCredit < octavesFinalCredit))
+                                    if ((totalCredit > 0) && (totalCredit > octavesFinalCredit))
                                     {
                                         otherIndexPosition = l;
                                         octavesFinalOtherD = testD;
@@ -401,10 +425,9 @@ namespace CVRP_APA
 
                                 if (otherIndexPosition != -1)
                                 {
-                                    otherRoute.Insert(otherIndexPosition + 1, cityR);
-
-                                    if (octavesFinalCredit < quarterFinalCredit)
+                                    if (octavesFinalCredit > quarterFinalCredit)
                                     {
+                                        otherRoute.Insert(otherIndexPosition + 1, cityR);
                                         quarterFinalOtherRoute = otherRoute;
                                         quarterFinalOtherD = octavesFinalOtherD;
                                         quarterFinalOtherC = entry.routesCapacity[k] + entry.demand[cityR];
@@ -420,7 +443,7 @@ namespace CVRP_APA
                         }
                     }
 
-                    if(quarterFinalCredit < semiFinalCredit && quarterFinalOtherRoute != null)
+                    if(quarterFinalCredit > semiFinalCredit && quarterFinalOtherRoute != null)
                     {
                         semiFinalCredit = quarterFinalCredit;
 
@@ -437,9 +460,9 @@ namespace CVRP_APA
 
                 if(currentIndexPosition != -1)
                 {
-                    auxRoute.RemoveAt(currentIndexPosition);
-                    if(semiFinalCredit < finalCredit)
+                    if(semiFinalCredit > finalCredit)
                     {
+                        auxRoute.RemoveAt(currentIndexPosition);
                         finalCredit = semiFinalCredit;
 
                         finalCurrentRoute = auxRoute;
@@ -461,30 +484,290 @@ namespace CVRP_APA
 
             if (finalCurrentRoute != null)
             {
-                Console.WriteLine("SEGUNDO VIZINHO:");
-                entry.routes[finalCurrentIndex] = finalCurrentRoute;
-                Console.Write("{");
-                foreach (int a in entry.routes[finalCurrentIndex])
-                {
-                    Console.Write(a + ", ");
-                }
-                Console.WriteLine();
-                entry.routesDistance[finalCurrentIndex] = finalCurrentD;
-                entry.routesCapacity[finalCurrentIndex] = finalCurrentC;
-                Console.WriteLine("Distancia final da rota " + finalCurrentIndex + ": " + entry.routesDistance[finalCurrentIndex]);
+                int initialSumDistance = 0;
+                initialSumDistance = entry.routesDistance[finalCurrentIndex] + entry.routesDistance[finalOtherIndex];
 
-                entry.routes[finalOtherIndex] = finalOtherRoute;
-                Console.Write("{");
-                foreach (int a in entry.routes[finalOtherIndex])
+                if((finalCurrentD + finalOtherD) < initialSumDistance)
                 {
-                    Console.Write(a + ", ");
-                }
-                Console.WriteLine();
-                entry.routesDistance[finalOtherIndex] = finalOtherD;
-                entry.routesCapacity[finalOtherIndex] = finalOtherC;
-                Console.WriteLine("Distancia final da rota " + finalOtherIndex + ": " + entry.routesDistance[finalOtherIndex]);
+                    Console.WriteLine("SEGUNDO VIZINHO:");
+                    entry.routes[finalCurrentIndex] = finalCurrentRoute;
+                    Console.Write("{");
+                    foreach (int a in entry.routes[finalCurrentIndex])
+                    {
+                        Console.Write(a + ", ");
+                    }
+                    Console.WriteLine();
+                    entry.routesDistance[finalCurrentIndex] = finalCurrentD;
+                    entry.routesCapacity[finalCurrentIndex] = finalCurrentC;
+                    Console.WriteLine("Distancia final da rota " + finalCurrentIndex + ": " + entry.routesDistance[finalCurrentIndex]);
 
-                Console.WriteLine("Total: " + (finalOtherD + finalCurrentD));
+                    entry.routes[finalOtherIndex] = finalOtherRoute;
+                    Console.Write("{");
+                    foreach (int a in entry.routes[finalOtherIndex])
+                    {
+                        Console.Write(a + ", ");
+                    }
+                    Console.WriteLine();
+                    entry.routesDistance[finalOtherIndex] = finalOtherD;
+                    entry.routesCapacity[finalOtherIndex] = finalOtherC;
+                    Console.WriteLine("Distancia final da rota " + finalOtherIndex + ": " + entry.routesDistance[finalOtherIndex]);
+
+                    int total = 0;
+                    foreach (int distance in entry.routesDistance)
+                    {
+                        total += distance;
+                    }
+
+                    Console.WriteLine("Total: " + total);
+                    return entry;
+                }
+            }
+
+            return null;
+        }
+
+        static Instance ThirdNeighbour(Instance entry)
+        {
+            //List<int> finalCurrentRoute = null;
+            int finalCurrentD = -1;
+            int finalCurrentC = -1;
+            int finalCurrentRouteIndex = -1;
+            int finalCurrentCityIndex = -1;
+
+            //List<int> finalOtherRoute = null;
+            int finalOtherD = -1;
+            int finalOtherC = -1;
+            int finalOtherRouteIndex = -1;
+            int finalOtherCityIndex = -1;
+
+            int finalCredit = int.MinValue;
+            for (int i = 0; i < entry.routes.Length; i++)
+            {
+                //pegando as rotas e as distancias iniciais de cada uma
+                int initialD = entry.routesDistance[i];
+                List<int> currentRoute = CloneList(entry.routes[i]);
+
+                //tenho que salvar a rota e distancia tanto da rota que eu tirei a cidade, quanto da rota que eu coloquei a cidade retirada
+                int semiFinalCurrentD = -1;
+                int semiFinalCurrentC = -1;
+                int semiFinalCurrentCityIndex = -1;
+
+                //List<int> semiFinalOtherRoute = null;
+                int semiFinalOtherD = -1;
+                int semiFinalOtherC = -1;
+                int semiFinalOtherRouteIndex = -1;
+                int semiFinalOtherCityIndex = -1;
+
+                int semiFinalCredit = int.MinValue;
+                //loop para todas as cidades dentro de cada rota, excluindo a primeira e a ultima
+                for (int j = 1; j < (currentRoute.Count - 1); j++)
+                {
+                    int cityR = currentRoute[j];
+                    int currentRouteC = entry.routesCapacity[i] - entry.demand[cityR];
+                    int quarterFinalCurrentD = -1;
+                    int quarterFinalCurrentC = -1;
+
+                    //ISSO AQUI SALVA DENTRE TODAS AS OUTRAS ROTAS POSSIVEIS
+                    //List<int> quarterFinalOtherRoute = null;
+                    int quarterFinalOtherD = -1;
+                    int quarterFinalOtherC = -1;
+                    int quarterFinalOtherRouteIndex = -1;
+                    int quarterFinalOtherCityIndex = -1;
+
+                    int quarterFinalCredit = int.MinValue;
+                    //Loop para todas as outras rotas diferentes da que foi escolhida
+                    for (int k = 0; k < entry.routes.Length; k++)
+                    {
+                        if (k != i)
+                        {
+                            //pegando as cidades outras rotas e sua distancia total
+                            List<int> otherRoute = CloneList(entry.routes[k]);
+                            int otherD = entry.routesDistance[k];
+
+                            int octavesFinalCurrentD = -1;
+                            int octavesFinalCurrentC = -1;
+                            
+                            //Variavel para salvar a melhor distancia depois colocar a nova cidade
+                            int octavesFinalOtherD = -1;
+                            int octavesFinalOtherC = -1;
+                            int octavesFinalOtherCityIndex = -1;
+
+                            int octavesFinalCredit = int.MinValue;
+                            //LOOP ENTRE TODAS AS CIDADES, EXCLUINDO A PRIMEIRA E A ÚLTIMA
+                            for (int l = 1; l < (otherRoute.Count - 1); l++)
+                            {
+                                int otherCity = otherRoute[l];
+                                int otherRouteC = entry.routesCapacity[k] - entry.demand[otherCity];
+
+                                if ((currentRouteC + entry.demand[otherCity] <= entry.capacity) && (otherRouteC + entry.demand[cityR] <= entry.capacity))
+                                {
+                                    //Excluir a distancia da cidade escolhida com a sua antecessora e sucessora, além disso somar a distancia entre a antecessora e a sucessora para pegar seu credito
+                                    int currentD = initialD - entry.costMatrix[currentRoute[j - 1], cityR] - entry.costMatrix[cityR, currentRoute[j + 1]] + 
+                                        entry.costMatrix[currentRoute[j - 1], otherCity] + entry.costMatrix[otherCity, currentRoute[j + 1]];
+                                    int currentCredit = initialD - currentD;
+
+                                    //Excluir a distancia entre as duas cidades da rota escolhida e adicionar a distancia das cidades da rota escolhida para a cidade a entrar na rota 
+                                    int testD = otherD - entry.costMatrix[otherRoute[l - 1], otherCity] - entry.costMatrix[otherCity, otherRoute[l + 1]] + 
+                                        entry.costMatrix[otherRoute[l - 1], cityR] + entry.costMatrix[cityR, otherRoute[l + 1]];
+                                    int otherCredit = otherD - testD;
+                                    int totalCredit = otherCredit + currentCredit;
+
+                                    //comparação de credito pra saber se vale a pena trocar, depois checa se a nova distancia seria melhor do que a salva anteriormente
+                                    if ((totalCredit > 0) && (totalCredit > octavesFinalCredit))
+                                    {
+                                        octavesFinalCurrentC = currentRouteC + entry.demand[otherCity];
+                                        octavesFinalCurrentD = currentD;
+
+                                        octavesFinalOtherC = otherRouteC + entry.demand[cityR];
+                                        octavesFinalOtherD = testD;
+                                        octavesFinalOtherCityIndex = l;
+
+                                        octavesFinalCredit = totalCredit;
+                                    }
+                                }
+                            }
+
+                            if ((octavesFinalOtherCityIndex != -1) && (octavesFinalCredit > quarterFinalCredit))
+                            {
+                                quarterFinalCurrentD = octavesFinalCurrentD;
+                                quarterFinalCurrentC = octavesFinalCurrentC;
+
+                                quarterFinalOtherD = octavesFinalOtherD;
+                                quarterFinalOtherC = octavesFinalOtherC;
+                                quarterFinalCredit = octavesFinalCredit;
+                                quarterFinalOtherCityIndex = octavesFinalOtherCityIndex;
+                                quarterFinalOtherRouteIndex = k;
+                            }
+                            else
+                            {
+                                continue;
+                            }
+                        }
+                    }
+
+                    if ((quarterFinalCredit > semiFinalCredit) && (quarterFinalOtherRouteIndex != -1))
+                    {
+                        semiFinalCredit = quarterFinalCredit;
+
+                        semiFinalCurrentD = quarterFinalCurrentD;
+                        semiFinalCurrentC = quarterFinalCurrentC;
+                        semiFinalCurrentCityIndex = j;
+
+                        semiFinalOtherD = quarterFinalOtherD;
+                        semiFinalOtherC = quarterFinalOtherC;
+                        semiFinalOtherRouteIndex = quarterFinalOtherRouteIndex;
+                        semiFinalOtherCityIndex = quarterFinalOtherCityIndex;
+                        
+                    }
+                }
+
+                if ((semiFinalCurrentCityIndex != -1) && (semiFinalCredit > finalCredit))
+                {
+                    finalCredit = semiFinalCredit;
+
+                    finalCurrentD = semiFinalCurrentD;
+                    finalCurrentC = semiFinalCurrentC;
+                    finalCurrentRouteIndex = i;
+                    finalCurrentCityIndex = semiFinalCurrentCityIndex;
+
+                    finalOtherD = semiFinalOtherD;
+                    finalOtherC = semiFinalOtherC;
+                    finalOtherRouteIndex = semiFinalOtherRouteIndex;
+                    finalOtherCityIndex = semiFinalOtherCityIndex;
+                }
+                else
+                {
+                    continue;
+                }
+            }
+
+            if (finalCurrentRouteIndex != -1)
+            {
+                int initialSumDistance = 0;
+                Console.WriteLine("Indice da primeira rota: " + finalCurrentRouteIndex);
+                Console.WriteLine("Indice da segunda rota: " + finalOtherRouteIndex);
+                initialSumDistance = entry.routesDistance[finalCurrentRouteIndex] + entry.routesDistance[finalOtherRouteIndex];
+
+                if ((finalCurrentD + finalOtherD) < initialSumDistance)
+                {
+                    Console.WriteLine("\nTERCEIRO VIZINHO:");
+
+                    int currentCity = entry.routes[finalCurrentRouteIndex][finalCurrentCityIndex];
+                    int otherCity = entry.routes[finalOtherRouteIndex][finalOtherCityIndex];
+                    entry.routes[finalCurrentRouteIndex].RemoveAt(finalCurrentCityIndex);
+                    entry.routes[finalCurrentRouteIndex].Insert(finalCurrentCityIndex, otherCity);
+                    entry.routes[finalOtherRouteIndex].RemoveAt(finalOtherCityIndex);
+                    entry.routes[finalOtherRouteIndex].Insert(finalOtherCityIndex, currentCity);
+
+                    Console.Write("{");
+                    foreach (int a in entry.routes[finalCurrentRouteIndex])
+                    {
+                        Console.Write(a + ", ");
+                    }
+                    Console.WriteLine();
+                    entry.routesDistance[finalCurrentRouteIndex] = finalCurrentD;
+                    entry.routesCapacity[finalCurrentRouteIndex] = finalCurrentC;
+                    Console.WriteLine("Distancia final da rota " + finalCurrentRouteIndex + ": " + entry.routesDistance[finalCurrentRouteIndex]);
+
+                    Console.Write("{");
+                    foreach (int a in entry.routes[finalOtherRouteIndex])
+                    {
+                        Console.Write(a + ", ");
+                    }
+                    Console.WriteLine();
+                    entry.routesDistance[finalOtherRouteIndex] = finalOtherD;
+                    entry.routesCapacity[finalOtherRouteIndex] = finalOtherC;
+                    Console.WriteLine("Distancia final da rota " + finalOtherRouteIndex + ": " + entry.routesDistance[finalOtherRouteIndex]);
+
+                    int total = 0;
+                    foreach (int distance in entry.routesDistance)
+                    {
+                        total += distance;
+                    }
+
+                    Console.WriteLine("Total: " + total);
+                    return entry;
+                }
+            }
+
+            return null;
+        }
+
+        static void VND(Instance entry)
+        {
+            Instance resultEntry = entry;
+            bool improvement = true;
+
+            while (improvement)
+            {
+                int k = 1;
+                improvement = false;
+                while(k <= 3)
+                {
+                    Instance aux = null;
+                    if(k == 1)
+                    {
+                        aux = FirstNeighbour(resultEntry);
+                    }
+                    else if(k == 2)
+                    {
+                        aux = SecondNeighbour(resultEntry);
+                    }
+                    else if(k == 3)
+                    {
+                        aux = ThirdNeighbour(resultEntry);
+                    }
+
+                    if(aux != null)
+                    {
+                        resultEntry = aux;
+                        improvement = true;
+                    }
+                    else
+                    {
+                        k++;
+                    }
+                }
             }
         }
 
