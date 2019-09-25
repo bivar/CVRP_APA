@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Diagnostics;
 
 namespace CVRP_APA
 {
@@ -11,7 +12,25 @@ namespace CVRP_APA
     {
         static void Main(string[] args)
         {
-            /*Instance[] vndEntries = new Instance[7];
+            float[] greatDistance = new float[7];
+            greatDistance[0] = 212f;
+            greatDistance[1] = 216f;
+            greatDistance[2] = 529f;
+            greatDistance[3] = 510f;
+            greatDistance[4] = 696f;
+            greatDistance[5] = 741f;
+            greatDistance[6] = 568f;
+
+            int[] bestDistanceVNDConstructive = new int[7];
+            float[] timeVNDConstructive = new float[7];
+            float[] gapVNDConstructive = new float[7];
+
+            int[] bestDistanceVND = new int[7];
+            float[] timeVND = new float[7];
+            float[] gapVND = new float[7];
+
+
+            Instance[] vndEntries = new Instance[7];
             vndEntries[0] = CreateEntryFile("P-n19-k2.txt");
             vndEntries[1] = CreateEntryFile("P-n20-k2.txt");
             vndEntries[2] = CreateEntryFile("P-n23-k8.txt");
@@ -19,29 +38,43 @@ namespace CVRP_APA
             vndEntries[4] = CreateEntryFile("P-n50-k10.txt");
             vndEntries[5] = CreateEntryFile("P-n51-k10.txt");
             vndEntries[6] = CreateEntryFile("P-n55-k7.txt");
-            
-            foreach(Instance entry in vndEntries)
+
+            for (int i = 0; i < 7; i++)
             {
-                Console.WriteLine("\n********************* VND *********************\n");
-                Console.WriteLine("\n*********************COMEÇO DO ARQUIVO: " + entry.nameFile+"*********************\n");
-                GreedyStep(entry, true);
-                VND(entry);
-            }*/
+                GreedyStep(vndEntries[i], true);
+                bestDistanceVNDConstructive[i] = vndEntries[i].totalDistance;
+                timeVNDConstructive[i] = vndEntries[i].constructiveTime;
+                gapVNDConstructive[i] = gapMeasure(bestDistanceVNDConstructive[i], greatDistance[i]);
+
+                VND(vndEntries[i]);
+                bestDistanceVND[i] = vndEntries[i].totalDistance;
+                timeVND[i] = vndEntries[i].graspVNDTime;
+                gapVND[i] = gapMeasure(bestDistanceVND[i], greatDistance[i]);
+            }
+
+            float[] meanDistanceConstructive = new float[7];
+            int[] bestDistanceConstructive = new int[7];
+            float[] meanTimeConstructive = new float[7];
+            float[] gapConstructive = new float[7];
+
+            float[] meanDistanceGrasp = new float[7];
+            int[] bestDistanceGrasp = new int[7];
+            float[] meanTimeGrasp = new float[7];
+            float[] gapGrasp = new float[7];
 
             //Instancias do Grasp
-            Instance[] graspEntries = new Instance[7];
-            graspEntries[0] = CreateEntryFile("P-n19-k2.txt");
-            graspEntries[1] = CreateEntryFile("P-n20-k2.txt");
-            graspEntries[2] = CreateEntryFile("P-n23-k8.txt");
-            graspEntries[3] = CreateEntryFile("P-n45-k5.txt");
-            graspEntries[4] = CreateEntryFile("P-n50-k10.txt");
-            graspEntries[5] = CreateEntryFile("P-n51-k10.txt");
-            graspEntries[6] = CreateEntryFile("P-n55-k7.txt");
+            List<Instance>[] allGRASPEntries = new List<Instance>[7];
+            allGRASPEntries[0] = new List<Instance>();
+            allGRASPEntries[1] = new List<Instance>();
+            allGRASPEntries[2] = new List<Instance>();
+            allGRASPEntries[3] = new List<Instance>();
+            allGRASPEntries[4] = new List<Instance>();
+            allGRASPEntries[5] = new List<Instance>();
+            allGRASPEntries[6] = new List<Instance>();
 
             //grasp
             for (int i = 0; i < 10; i++)
             {
-                Console.WriteLine("********** ITERAÇÃO: " + i + " **********");
                 Instance[] tmpEntries = new Instance[7];
                 tmpEntries[0] = CreateEntryFile("P-n19-k2.txt");
                 tmpEntries[1] = CreateEntryFile("P-n20-k2.txt");
@@ -51,14 +84,63 @@ namespace CVRP_APA
                 tmpEntries[5] = CreateEntryFile("P-n51-k10.txt");
                 tmpEntries[6] = CreateEntryFile("P-n55-k7.txt");
 
-                //foreach (Instance entry in graspEntries)
-                //{
-                    Console.WriteLine("\n********************* GRASP *********************\n");
-                    //Console.WriteLine("\n*********************COMEÇO DO ARQUIVO: " + entry.nameFile + "*********************\n");
-                    Console.WriteLine("\n*********************COMEÇO DO ARQUIVO: " + graspEntries[0].nameFile + "*********************\n");
-                    //GRASPConstruiction(entry, true , 4);
-                    GRASPConstruiction(graspEntries[0], true, 4);
-                //}
+                for (int j = 0; j < 7; j++)
+                {
+                    if (GRASPConstruiction(tmpEntries[j], true, 4))
+                        allGRASPEntries[j].Add(tmpEntries[j]);
+                }
+            }
+
+            for (int i = 0; i < 7; i++)
+            {
+                meanDistanceConstructive[i] = meanDistance(allGRASPEntries[i]);
+
+                bestDistanceConstructive[i] = bestEntryInstance(allGRASPEntries[i]);
+
+                meanTimeConstructive[i] = meanTime(allGRASPEntries[i], 3);
+
+                gapConstructive[i] = gapMeasure(bestDistanceConstructive[i], greatDistance[i]);
+            }
+
+            //GRASP VIZINHANÇA
+            for (int i = 0; i < 7; i++)
+            {
+                foreach (Instance entry in allGRASPEntries[i])
+                {
+                    VND(entry);
+                }
+            }
+
+            for (int i = 0; i < 7; i++)
+            {
+                meanDistanceGrasp[i] = meanDistance(allGRASPEntries[i]);
+
+                bestDistanceGrasp[i] = bestEntryInstance(allGRASPEntries[i]);
+
+                meanTimeGrasp[i] = meanTime(allGRASPEntries[i], 4);
+
+                gapGrasp[i] = gapMeasure(bestDistanceGrasp[i], greatDistance[i]);
+            }
+
+            Console.WriteLine("\n\t\t\t\t Heurística Construtiva VND \t\t\t\t\t\t\t VND");
+            Console.WriteLine("\t\t\t----------------------------------------------------------\t-----------------------------------------------------------");
+            Console.WriteLine("\t\t Ótimo \t Média Solução  Melhor Solução  Média Tempo \tGAP \t\t Média Solução  Melhor Solução  Média Tempo  GAP");
+            for (int i = 0; i < 7; i++)
+            {
+                Console.WriteLine("Instancia " + i + "\t " + greatDistance[i] + " \t\t " + "---" + " \t\t " + bestDistanceVNDConstructive[i] + " \t     " + timeVNDConstructive[i] + "        "+
+                    gapVNDConstructive[i] + "\t\t     " + "---" + " \t " + bestDistanceVND[i]  + " \t         " + timeVND[i] + " \t     " + gapVND[i]);
+                //Console.WriteLine("Instancia " + i + "\t 0.0 \t\t 0.0 \t\t 0.0 \t     0.0 \t 0.0\t\t     0.0 \t 0.0 \t         0.0 \t     0.0");
+
+            }
+
+            Console.WriteLine("\n\t\t\t\t Heurística Construtiva GRASP \t\t\t\t\t\t\t GRASP");
+            Console.WriteLine("\t\t\t----------------------------------------------------------\t-----------------------------------------------------------");
+            Console.WriteLine("\t\t Ótimo \t Média Solução  Melhor Solução  Média Tempo \tGAP \t\t Média Solução  Melhor Solução  Média Tempo  GAP");
+            for (int i = 0; i < 7; i++)
+            {
+                Console.WriteLine("Instancia " + i + "\t " + greatDistance[i] + "\t\t " + meanDistanceConstructive[i].ToString("0.0") + "       " + bestDistanceConstructive[i] + " \t     " + meanTimeConstructive[i].ToString("0.0") + "        " + gapConstructive[i].ToString("0.0") + "\t\t     " + meanDistanceGrasp[i].ToString("0.0") + " \t " + bestDistanceGrasp[i] + " \t         " + meanTimeGrasp[i].ToString("0.0") + " \t     " + gapGrasp[i].ToString("0.0"));
+                //Console.WriteLine("Instancia " + i + "\t 0.0 \t\t 0.0 \t\t 0.0 \t     0.0 \t 0.0\t\t     0.0 \t 0.0 \t         0.0 \t     0.0");
+
             }
         }
 
@@ -164,6 +246,8 @@ namespace CVRP_APA
             MinHeap minheaps = null;
             MaxHeap maxheaps = null;
 
+            Stopwatch greedyTime = new Stopwatch();
+
             if (isMin)
             {
                 //Criação do heaps minimo da capcidade em relação a cada cidade
@@ -175,6 +259,13 @@ namespace CVRP_APA
                 //Criação do heaps maximo da capcidade em relação a cada cidade
                 maxheaps = CreateMaxHeaps(entry);
             }
+
+            if (greedyTime.IsRunning)
+            {
+                greedyTime.Reset();
+            }
+
+            greedyTime.Start();
 
             visited[0] = true;
             for (int i = 0; i < routes.Length; i++)
@@ -248,6 +339,9 @@ namespace CVRP_APA
                 }
             }
 
+            //PARAR DE CONTABILIZAR O TEMPO DO ALGORITMO
+            greedyTime.Stop();
+
             int totalDistance = 0;
 
             for (int i = 0; i < routes.Length; i++)
@@ -283,6 +377,8 @@ namespace CVRP_APA
                 entry.routes = routes;
                 entry.routesDistance = routesDistance;
                 entry.routesCapacity = capacitySum;
+                entry.totalDistance = totalDistance;
+                entry.constructiveTime = greedyTime.ElapsedMilliseconds;
             }
             else
             {
@@ -292,11 +388,15 @@ namespace CVRP_APA
             
         }
 
-        static void GRASPConstruiction(Instance entry, bool isMin, int listSize)
+        static bool GRASPConstruiction(Instance entry, bool isMin, int listSize)
         {
+            bool success = false;
             int[] routesDistance = new int[entry.vehicles];
             int[] capacitySum = new int[entry.vehicles];
             int[] currentCity = new int[entry.vehicles];
+
+            Stopwatch graspConstructionTime = new Stopwatch();
+
             //Lista para salvar os x menores/naiores valores do passo guloso
             List<HeapPair> graspList = new List<HeapPair>(listSize);
 
@@ -318,6 +418,13 @@ namespace CVRP_APA
                 //Criação do heaps maximo da capcidade em relação a cada cidade
                 maxheaps = CreateMaxHeaps(entry);
             }
+
+            if (graspConstructionTime.IsRunning)
+            {
+                graspConstructionTime.Reset();
+            }
+
+            graspConstructionTime.Start();
 
             visited[0] = true;
             for (int i = 0; i < routes.Length; i++)
@@ -360,51 +467,55 @@ namespace CVRP_APA
                 for (int i = 0; i < routes.Length; i++)
                 {
                     //CHECA SE A LISTA TA VAZIA
-                    if (graspList.Count == 0)
+                    if (graspList.Count == 0 && city == null)
                     {
                         allRoutesFull = true;
                         break;
                     }
 
                     //PEGA UM VALOR ALEATORIO PARA TESTAR COM TODAS AS ROTAS
-                    randomIndex = random.Next(graspList.Count);
-                    city = graspList[randomIndex];
-                    graspList.RemoveAt(randomIndex);
-
-                    //ENQUANTO O HEAP N ESTIVER VAZIO PEGAR O PROXIMO VALOR DELE
-                    if (!emptyHeap)
+                    if(city == null)
                     {
-                        try
-                        {
-                            if (isMin)
-                            {
-                                Console.WriteLine("********** VALOR DO INDICE: " + randomIndex + " **********");
-                                //ATUALIZAR A LISTA PARA COLOCAR OUTRO VALOR NELA 
-                                graspList.Insert(randomIndex, minheaps.Pop());
-                            }
-                            else
-                            {
-                                //ATUALIZAR A LISTA PARA COLOCAR OUTRO VALOR NELA 
-                                graspList.Insert(randomIndex, maxheaps.Pop());
-                            }
-                        }
+                        randomIndex = random.Next(graspList.Count);
+                        city = graspList[randomIndex];
+                        graspList.RemoveAt(randomIndex);
 
-                        catch (IndexOutOfRangeException)
+                        //ENQUANTO O HEAP N ESTIVER VAZIO PEGAR O PROXIMO VALOR DELE
+                        if (!emptyHeap)
                         {
-                            Console.WriteLine("########## Não tem mais cidade no heap. ##########");
-                            emptyHeap = true;
+                            try
+                            {
+                                if (isMin)
+                                {
+                                    Console.WriteLine("********** VALOR DO INDICE: " + randomIndex + " **********");
+                                    //ATUALIZAR A LISTA PARA COLOCAR OUTRO VALOR NELA 
+                                    graspList.Insert(randomIndex, minheaps.Pop());
+                                }
+                                else
+                                {
+                                    //ATUALIZAR A LISTA PARA COLOCAR OUTRO VALOR NELA 
+                                    graspList.Insert(randomIndex, maxheaps.Pop());
+                                }
+                            }
+
+                            catch (IndexOutOfRangeException)
+                            {
+                                Console.WriteLine("########## Não tem mais cidade no heap. ##########");
+                                emptyHeap = true;
+                            }
                         }
                     }
-                        
 
                     //CHECAR SE A DEMANDA DA CIDADE CABE NA ROTA ATUAL
                     if ((capacitySum[i] + city.demand) > entry.capacity)
                     {
+                        //Console.WriteLine("########## NÃO CABE NA ROTA ########");
+                        //Console.WriteLine("Cidade: " + city.cityNum);
                         bool fit = false;
                         for (int j = 0; j < routes.Length; j++)
                         {
                             //ALTERAR PARA PEGAR SÓ VALORES DA LISTA
-                            if ((capacitySum[i] + city.demand) <= entry.capacity)
+                            if ((capacitySum[j] + city.demand) <= entry.capacity)
                             {
                                 fit = true;
                                 break;
@@ -431,9 +542,12 @@ namespace CVRP_APA
                     currentCity[i] = city.cityNum;
                     city = null;
                     randomIndex = -1;
+                    break;
                 }
             }
 
+            //PEGAR O TEMPO TOTAL DO ALGORITMO
+            graspConstructionTime.Stop();
             int totalDistance = 0;
 
             for (int i = 0; i < routes.Length; i++)
@@ -469,14 +583,26 @@ namespace CVRP_APA
                 entry.routes = routes;
                 entry.routesDistance = routesDistance;
                 entry.routesCapacity = capacitySum;
+                success = true;
+                //Salva a distancia total percorrida 
+                entry.totalDistance = totalDistance;
+                entry.graspTime = graspConstructionTime.ElapsedMilliseconds;
             }
             else
             {
                 if (isMin)
-                    GRASPConstruiction(entry, false, listSize);
+                {
+                    if(GRASPConstruiction(entry, false, listSize))
+                    {
+                        success = true;
+                    }
+                }
+                    
             }
-        }
 
+            return success;
+        }
+     
         static Instance FirstNeighbour(Instance entry)
         {
             int total = 0;
@@ -955,7 +1081,8 @@ namespace CVRP_APA
         {
             Instance resultEntry = entry;
             bool improvement = true;
-
+            Stopwatch timer = new Stopwatch();
+            timer.Start();
             while (improvement)
             {
                 int k = 1;
@@ -987,6 +1114,19 @@ namespace CVRP_APA
                     }
                 }
             }
+
+            int totalDistance = 0;
+
+            for (int i = 0; i < entry.routes.Length; i++)
+            {
+                totalDistance += entry.routesDistance[i];
+            }
+
+            entry.totalDistance = totalDistance; 
+
+            timer.Stop();
+
+            entry.graspVNDTime = timer.ElapsedMilliseconds;
         }
 
         static List<int> CloneList(List<int> list)
@@ -994,6 +1134,68 @@ namespace CVRP_APA
             int[] a = new int[list.Count];
             list.CopyTo(a);
             return a.OfType<int>().ToList();
+        }
+
+        static int bestEntryInstance(List<Instance> instancesEntries)
+        {
+            int bestResult = int.MaxValue;
+
+            foreach (Instance entry in instancesEntries)
+            {
+                if (entry.totalDistance < bestResult)
+                {
+                    bestResult = entry.totalDistance;
+                }
+            }
+
+            return bestResult;
+        }
+
+        static float meanDistance(List<Instance> instancesEntries)
+        {
+            float meanDistance = 0.0f;
+
+            foreach (Instance entry in instancesEntries)
+            {
+                meanDistance += entry.totalDistance;
+            }
+
+            meanDistance = meanDistance / instancesEntries.Count;
+
+            return meanDistance;
+        }
+
+        static float meanTime(List<Instance> instancesEntries, int type)
+        {
+            float meanTime = 0.0f;
+
+            foreach (Instance entry in instancesEntries)
+            {
+                switch (type)
+                {
+                    case 1:
+                        meanTime += entry.constructiveTime;
+                        break;
+                    case 3:
+                        meanTime += entry.graspTime;
+                        break;
+                    case 4:
+                        meanTime += entry.graspVNDTime;
+                        break;
+                }
+
+            }
+
+            meanTime = meanTime / instancesEntries.Count;
+
+            return meanTime;
+        }
+
+        static float gapMeasure(int bestInstance, float greatDistance)
+        {
+            float gap = (((bestInstance - greatDistance) / greatDistance) * 100f);
+
+            return gap;
         }
     }
 
@@ -1008,6 +1210,10 @@ namespace CVRP_APA
         public List<int>[] routes;
         public int[] routesDistance;
         public int[] routesCapacity;
+        public int totalDistance = 0;
+        public float constructiveTime = 0;
+        public float graspTime = 0;
+        public float graspVNDTime = 0;
 
         public Instance(string nameFile, int dimension, int vehicles, int capacity)
         {
