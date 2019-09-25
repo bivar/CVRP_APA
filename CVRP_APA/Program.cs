@@ -11,22 +11,55 @@ namespace CVRP_APA
     {
         static void Main(string[] args)
         {
-            Instance[] allEntries = new Instance[7];
-            allEntries[0] = CreateEntryFile("P-n19-k2.txt");
-            allEntries[1] = CreateEntryFile("P-n20-k2.txt");
-            allEntries[2] = CreateEntryFile("P-n23-k8.txt");
-            allEntries[3] = CreateEntryFile("P-n45-k5.txt");
-            allEntries[4] = CreateEntryFile("P-n50-k10.txt");
-            allEntries[5] = CreateEntryFile("P-n51-k10.txt");
-            allEntries[6] = CreateEntryFile("P-n55-k7.txt");
+            /*Instance[] vndEntries = new Instance[7];
+            vndEntries[0] = CreateEntryFile("P-n19-k2.txt");
+            vndEntries[1] = CreateEntryFile("P-n20-k2.txt");
+            vndEntries[2] = CreateEntryFile("P-n23-k8.txt");
+            vndEntries[3] = CreateEntryFile("P-n45-k5.txt");
+            vndEntries[4] = CreateEntryFile("P-n50-k10.txt");
+            vndEntries[5] = CreateEntryFile("P-n51-k10.txt");
+            vndEntries[6] = CreateEntryFile("P-n55-k7.txt");
             
-            foreach(Instance entry in allEntries)
+            foreach(Instance entry in vndEntries)
             {
+                Console.WriteLine("\n********************* VND *********************\n");
                 Console.WriteLine("\n*********************COMEÇO DO ARQUIVO: " + entry.nameFile+"*********************\n");
                 GreedyStep(entry, true);
                 VND(entry);
+            }*/
+
+            //Instancias do Grasp
+            Instance[] graspEntries = new Instance[7];
+            graspEntries[0] = CreateEntryFile("P-n19-k2.txt");
+            graspEntries[1] = CreateEntryFile("P-n20-k2.txt");
+            graspEntries[2] = CreateEntryFile("P-n23-k8.txt");
+            graspEntries[3] = CreateEntryFile("P-n45-k5.txt");
+            graspEntries[4] = CreateEntryFile("P-n50-k10.txt");
+            graspEntries[5] = CreateEntryFile("P-n51-k10.txt");
+            graspEntries[6] = CreateEntryFile("P-n55-k7.txt");
+
+            //grasp
+            for (int i = 0; i < 10; i++)
+            {
+                Console.WriteLine("********** ITERAÇÃO: " + i + " **********");
+                Instance[] tmpEntries = new Instance[7];
+                tmpEntries[0] = CreateEntryFile("P-n19-k2.txt");
+                tmpEntries[1] = CreateEntryFile("P-n20-k2.txt");
+                tmpEntries[2] = CreateEntryFile("P-n23-k8.txt");
+                tmpEntries[3] = CreateEntryFile("P-n45-k5.txt");
+                tmpEntries[4] = CreateEntryFile("P-n50-k10.txt");
+                tmpEntries[5] = CreateEntryFile("P-n51-k10.txt");
+                tmpEntries[6] = CreateEntryFile("P-n55-k7.txt");
+
+                //foreach (Instance entry in graspEntries)
+                //{
+                    Console.WriteLine("\n********************* GRASP *********************\n");
+                    //Console.WriteLine("\n*********************COMEÇO DO ARQUIVO: " + entry.nameFile + "*********************\n");
+                    Console.WriteLine("\n*********************COMEÇO DO ARQUIVO: " + graspEntries[0].nameFile + "*********************\n");
+                    //GRASPConstruiction(entry, true , 4);
+                    GRASPConstruiction(graspEntries[0], true, 4);
+                //}
             }
-            
         }
 
         static Instance CreateEntryFile(string fileName)
@@ -142,7 +175,7 @@ namespace CVRP_APA
                 //Criação do heaps maximo da capcidade em relação a cada cidade
                 maxheaps = CreateMaxHeaps(entry);
             }
-            
+
             visited[0] = true;
             for (int i = 0; i < routes.Length; i++)
             {
@@ -160,9 +193,9 @@ namespace CVRP_APA
                         HeapPair city = null;
                         if (isMin)
                         {
-                            if((capacitySum[i] + minheaps.Peek()) <= entry.capacity)
+                            if ((capacitySum[i] + minheaps.Peek()) <= entry.capacity)
                             {
-                                city= minheaps.Pop();
+                                city = minheaps.Pop();
                             }
                             else
                             {
@@ -257,6 +290,191 @@ namespace CVRP_APA
                     GreedyStep(entry, false);
             }
             
+        }
+
+        static void GRASPConstruiction(Instance entry, bool isMin, int listSize)
+        {
+            int[] routesDistance = new int[entry.vehicles];
+            int[] capacitySum = new int[entry.vehicles];
+            int[] currentCity = new int[entry.vehicles];
+            //Lista para salvar os x menores/naiores valores do passo guloso
+            List<HeapPair> graspList = new List<HeapPair>(listSize);
+
+            //We are only allowed to have the number of routes less or equal to the number of vehicles
+            List<int>[] routes = new List<int>[entry.vehicles];
+            bool[] visited = new bool[entry.dimension];
+
+            MinHeap minheaps = null;
+            MaxHeap maxheaps = null;
+
+            if (isMin)
+            {
+                //Criação do heaps minimo da capcidade em relação a cada cidade
+                minheaps = CreateMinHeaps(entry);
+            }
+            else
+            {
+                Console.WriteLine("\n COMEÇOU O MAXIMO \n");
+                //Criação do heaps maximo da capcidade em relação a cada cidade
+                maxheaps = CreateMaxHeaps(entry);
+            }
+
+            visited[0] = true;
+            for (int i = 0; i < routes.Length; i++)
+            {
+                routes[i] = new List<int>();
+                routes[i].Add(0);
+            }
+
+            bool allRoutesFull = false;
+            //Atribuição dos primeiros valores na lista do grasp
+            //E dentro de cada rota escolher um aleatório para ver se encaixa nas rotas
+            //LEMBRAR DE AO ADICIONAR EM UM ROTA ATUALIZAR A LISTA
+            Random random = new Random();
+            for (int i = 0; i < listSize; i++)
+            {
+                if (isMin)
+                {
+                    graspList.Add(minheaps.Pop());
+                }
+                else
+                {
+                    graspList.Add(maxheaps.Pop());
+                }
+            }
+            
+            //EMBARALHAR OS VALORES DA LISTA
+            for (int i = 0; i < listSize; i++)
+            {
+                var shuffleIndex = random.Next(listSize);
+                var tmp = graspList[i];
+                graspList[i] = graspList[shuffleIndex];
+                graspList[shuffleIndex] = tmp;
+            }
+
+            HeapPair city = null;
+            bool emptyHeap = false;
+            int randomIndex = -1;
+            while (!allRoutesFull)
+            {
+                for (int i = 0; i < routes.Length; i++)
+                {
+                    //CHECA SE A LISTA TA VAZIA
+                    if (graspList.Count == 0)
+                    {
+                        allRoutesFull = true;
+                        break;
+                    }
+
+                    //PEGA UM VALOR ALEATORIO PARA TESTAR COM TODAS AS ROTAS
+                    randomIndex = random.Next(graspList.Count);
+                    city = graspList[randomIndex];
+                    graspList.RemoveAt(randomIndex);
+
+                    //ENQUANTO O HEAP N ESTIVER VAZIO PEGAR O PROXIMO VALOR DELE
+                    if (!emptyHeap)
+                    {
+                        try
+                        {
+                            if (isMin)
+                            {
+                                Console.WriteLine("********** VALOR DO INDICE: " + randomIndex + " **********");
+                                //ATUALIZAR A LISTA PARA COLOCAR OUTRO VALOR NELA 
+                                graspList.Insert(randomIndex, minheaps.Pop());
+                            }
+                            else
+                            {
+                                //ATUALIZAR A LISTA PARA COLOCAR OUTRO VALOR NELA 
+                                graspList.Insert(randomIndex, maxheaps.Pop());
+                            }
+                        }
+
+                        catch (IndexOutOfRangeException)
+                        {
+                            Console.WriteLine("########## Não tem mais cidade no heap. ##########");
+                            emptyHeap = true;
+                        }
+                    }
+                        
+
+                    //CHECAR SE A DEMANDA DA CIDADE CABE NA ROTA ATUAL
+                    if ((capacitySum[i] + city.demand) > entry.capacity)
+                    {
+                        bool fit = false;
+                        for (int j = 0; j < routes.Length; j++)
+                        {
+                            //ALTERAR PARA PEGAR SÓ VALORES DA LISTA
+                            if ((capacitySum[i] + city.demand) <= entry.capacity)
+                            {
+                                fit = true;
+                                break;
+                            }
+                        }
+                        if (!fit)
+                        {
+                            allRoutesFull = true;
+                            break;
+                        }
+                        else
+                        {
+                            continue;
+                        }
+                    }
+
+                    //SE COUBER SÓ COLOCAR
+                    Console.WriteLine("Cidade: " + city.cityNum);
+                    Console.WriteLine("Demanda: " + city.demand);
+                    routes[i].Add(city.cityNum);
+                    capacitySum[i] += city.demand;
+                    visited[city.cityNum] = true;
+                    routesDistance[i] += entry.costMatrix[currentCity[i], city.cityNum];
+                    currentCity[i] = city.cityNum;
+                    city = null;
+                    randomIndex = -1;
+                }
+            }
+
+            int totalDistance = 0;
+
+            for (int i = 0; i < routes.Length; i++)
+            {
+                routes[i].Add(0);
+                routesDistance[i] += entry.costMatrix[routes[i][routes[i].Count - 2], 0];
+                Console.Write("{");
+                foreach (int a in routes[i])
+                {
+                    Console.Write(a + ", ");
+
+                }
+                Console.Write("}");
+                Console.WriteLine();
+                Console.WriteLine("Distancia dessa rota: " + routesDistance[i]);
+                Console.WriteLine("Capacidade dessa rota: " + capacitySum[i]);
+                totalDistance += routesDistance[i];
+            }
+
+            bool allCitiesVisited = true;
+            for (int k = 0; k < entry.dimension; k++)
+            {
+                if (visited[k] == false)
+                {
+                    allCitiesVisited = false;
+                    Console.WriteLine("Não visitou a cidade: " + k);
+                }
+            }
+
+            if (allCitiesVisited)
+            {
+                Console.WriteLine("Distancia total da rota: " + totalDistance);
+                entry.routes = routes;
+                entry.routesDistance = routesDistance;
+                entry.routesCapacity = capacitySum;
+            }
+            else
+            {
+                if (isMin)
+                    GRASPConstruiction(entry, false, listSize);
+            }
         }
 
         static Instance FirstNeighbour(Instance entry)
